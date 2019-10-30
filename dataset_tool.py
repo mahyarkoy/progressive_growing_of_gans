@@ -217,6 +217,14 @@ def extract(tfrecord_dir, output_dir):
     tfutil.init_tf({'gpu_options.allow_growth': True})
     dset = dataset.TFRecordDataset(tfrecord_dir, max_label_size=0, repeat=False, shuffle_mb=0)
     tfutil.init_uninited_vars()
+
+    ### shifting kernel
+    fc_x = 0.5
+    fc_y = 0.5
+    im_size = 128
+    kernel_loc = 2.*np.pi*fc_x * np.arange(im_size).reshape((1, im_size, 1)) + \
+        2.*np.pi*fc_y * np.arange(im_size).reshape((im_size, 1, 1))
+    kernel_cos = np.cos(kernel_loc)
     
     print('Extracting images to "%s"' % output_dir)
     if not os.path.isdir(output_dir):
@@ -233,6 +241,15 @@ def extract(tfrecord_dir, output_dir):
             img = PIL.Image.fromarray(images[0][0], 'L')
         else:
             img = PIL.Image.fromarray(images[0].transpose(1, 2, 0), 'RGB')
+
+        ### shifting the image
+        #img = np.asarray(img)
+        #img_t = 2.* (img.astype(np.float32) / 255.) - 1.
+        #img_sh = img_t * kernel_cos
+        #img = (img_sh + 1.) / 2. * 255.
+        #img = np.rint(img).clip(0, 255).astype(np.uint8)
+        #img = PIL.Image.fromarray(img)
+
         img.save(os.path.join(output_dir, 'img%08d.png' % idx))
         idx += 1
     print('Extracted %d images.' % idx)
@@ -434,18 +451,32 @@ def create_lsun(tfrecord_dir, lmdb_dir, resolution=256, max_images=None):
 
 def create_celeba(tfrecord_dir, celeba_dir, cx=89, cy=121):
     print('Loading CelebA from "%s"' % celeba_dir)
-    glob_pattern = os.path.join(celeba_dir, 'img_align_celeba_png', '*.png')
+    glob_pattern = os.path.join(celeba_dir, 'img_align_celeba', '*.jpg')
     image_filenames = sorted(glob.glob(glob_pattern))
     expected_images = 202599
     if len(image_filenames) != expected_images:
         error('Expected to find %d images' % expected_images)
     
+    ### shifting kernel
+    fc_x = 0.5
+    fc_y = 0.5
+    im_size = 128
+    kernel_loc = 2.*np.pi*fc_x * np.arange(im_size).reshape((1, im_size, 1)) + \
+        2.*np.pi*fc_y * np.arange(im_size).reshape((im_size, 1, 1))
+    kernel_cos = np.cos(kernel_loc)
+
     with TFRecordExporter(tfrecord_dir, len(image_filenames)) as tfr:
         order = tfr.choose_shuffled_order()
         for idx in range(order.size):
             img = np.asarray(PIL.Image.open(image_filenames[order[idx]]))
             assert img.shape == (218, 178, 3)
             img = img[cy - 64 : cy + 64, cx - 64 : cx + 64]
+            
+            ### shifting the image
+            #img_t = 2.* (img.astype(np.float32) / 255.) - 1.
+            #img_sh = img_t * kernel_cos
+            #img = (img_sh + 1.) / 2. * 255.
+
             img = img.transpose(2, 0, 1) # HWC => CHW
             tfr.add_image(img)
 

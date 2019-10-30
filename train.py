@@ -6,6 +6,9 @@
 # Creative Commons, PO Box 1866, Mountain View, CA 94042, USA.
 
 import os
+os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID" # so the IDs match nvidia-smi
+os.environ["CUDA_VISIBLE_DEVICES"] = "2,3" # "0, 1" for multiple
+
 import time
 import numpy as np
 import tensorflow as tf
@@ -14,6 +17,7 @@ import config
 import tfutil
 import dataset
 import misc
+import sys
 
 #----------------------------------------------------------------------------
 # Choose the size and contents of the image snapshot grids that are exported
@@ -195,6 +199,18 @@ def train_progressive_gan(
     grid_size, grid_reals, grid_labels, grid_latents = setup_snapshot_image_grid(G, training_set, **config.grid)
     sched = TrainingSchedule(total_kimg * 1000, training_set, **config.sched)
     grid_fakes = Gs.run(grid_latents, grid_labels, minibatch_size=sched.minibatch//config.num_gpus)
+
+    ### fft drawing
+    #sys.path.insert(0, '/home/mahyar/CV_Res/ganist')
+    #from fig_draw import apply_fft_win
+    #data_size = 1000
+    #latents = np.random.randn(data_size, *Gs.input_shapes[0][1:])
+    #labels = np.zeros([latents.shape[0]] + Gs.input_shapes[1][1:])
+    #g_samples = Gs.run(latents, labels, minibatch_size=sched.minibatch//config.num_gpus)
+    #g_samples = g_samples.transpose(0, 2, 3, 1)
+    #print('>>> g_samples shape: {}'.format(g_samples.shape))
+    #apply_fft_win(g_samples, 'fft_pggan_hann.png')
+    ### end fft drawing
 
     print('Setting up result dir...')
     result_subdir = misc.create_result_subdir(config.result_dir, config.desc)

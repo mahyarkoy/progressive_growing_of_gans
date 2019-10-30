@@ -162,6 +162,7 @@ def G_paper(
     is_template_graph   = False,        # True = template graph constructed by the Network class, False = actual evaluation.
     **kwargs):                          # Ignore unrecognized keyword args.
     
+    structure = 'linear'
     resolution_log2 = int(np.log2(resolution))
     assert resolution == 2**resolution_log2 and resolution >= 4
     def nf(stage): return min(int(fmap_base / (2.0 ** (stage * fmap_decay))), fmap_max)
@@ -202,14 +203,37 @@ def G_paper(
         with tf.variable_scope('ToRGB_lod%d' % lod):
             return apply_bias(conv2d(x, fmaps=num_channels, kernel=1, gain=1, use_wscale=use_wscale))
 
+    def freq_shift_gen(gr, gi, fc_x, fc_y):
+        im_size = gr.get_shape().as_list()[-1]
+        kernel_loc = 2.*np.pi*fc_x * np.arange(im_size).reshape((1, 1, im_size)) + \
+            2.*np.pi*fc_y * np.arange(im_size).reshape((1, im_size, 1))
+        kernel_cos = tf.convert_to_tensor(np.cos(kernel_loc), dtype=tf.float32)
+        kernel_sin = tf.convert_to_tensor(np.sin(kernel_loc), dtype=tf.float32)
+        return gr * kernel_cos - gi * kernel_sin
+
     # Linear structure: simple but inefficient.
+    fsg_list = list()
     if structure == 'linear':
         x = block(combo_in, 2)
         images_out = torgb(x, 2)
         for res in range(3, resolution_log2 + 1):
             lod = resolution_log2 - res
+
+            ### frequency shifted gens
+            if res == resolution_log2 - 1:
+                freq_list = [(1/16., 0.), (0., 1/16.), (1/16., 1/16.), (-1/16., 1/16.)]
+                g_list = list()
+                for i in range(2*len(freq_list)):
+                    with tf.variable_scope('fsg_{}'.format(i)):
+                        g = upscale2d(torgb(block(x, res), res))
+                    g_list.append(g)
+                for i, fc in enumerate(freq_list):
+                    fsg = freq_shift_gen(g_list[i*2], g_list[i*2+1], fc[0], fc[1])
+                    fsg_list.append(fsg)
+            ### end of frequency shifted gans
             x = block(x, res)
             img = torgb(x, res)
+            img = img + sum(fsg_list) if len(fsg_list) > 0 and res == resolution_log2 else img
             images_out = upscale2d(images_out)
             with tf.variable_scope('Grow_lod%d' % lod):
                 images_out = lerp_clip(img, images_out, lod_in - lod)
