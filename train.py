@@ -201,15 +201,15 @@ def train_progressive_gan(
     grid_fakes = Gs.run(grid_latents, grid_labels, minibatch_size=sched.minibatch//config.num_gpus)
 
     ### fft drawing
-    #sys.path.insert(0, '/home/mahyar/CV_Res/ganist')
-    #from fig_draw import apply_fft_win
-    #data_size = 1000
-    #latents = np.random.randn(data_size, *Gs.input_shapes[0][1:])
-    #labels = np.zeros([latents.shape[0]] + Gs.input_shapes[1][1:])
-    #g_samples = Gs.run(latents, labels, minibatch_size=sched.minibatch//config.num_gpus)
-    #g_samples = g_samples.transpose(0, 2, 3, 1)
-    #print('>>> g_samples shape: {}'.format(g_samples.shape))
-    #apply_fft_win(g_samples, 'fft_pggan_hann.png')
+    sys.path.insert(0, '/home/mahyar/CV_Res/ganist')
+    from fig_draw import apply_fft_win
+    data_size = 1000
+    latents = np.random.randn(data_size, *Gs.input_shapes[0][1:])
+    labels = np.zeros([latents.shape[0]] + Gs.input_shapes[1][1:])
+    g_samples = Gs.run(latents, labels, minibatch_size=sched.minibatch//config.num_gpus)
+    g_samples = g_samples.transpose(0, 2, 3, 1)
+    print('>>> g_samples shape: {}'.format(g_samples.shape))
+    apply_fft_win(g_samples, 'fft_pggan_hann.png')
     ### end fft drawing
 
     print('Setting up result dir...')
