@@ -153,6 +153,7 @@ def train_progressive_gan(
 
     maintenance_start_time = time.time()
     training_set = dataset.load_dataset(data_dir=config.data_dir, verbose=True, **config.dataset)
+    #resume_run_id = '/media/evl/Public/Mahyar/pggan_logs/logs_celeba128cc_sh/results_0/000-pgan-celeba-preset-v2-2gpus-fp32/network-snapshot-010211.pkl'
 
     # Construct networks.
     with tf.device('/gpu:0'):
@@ -197,6 +198,19 @@ def train_progressive_gan(
 
     print('Setting up snapshot image grid...')
     grid_size, grid_reals, grid_labels, grid_latents = setup_snapshot_image_grid(G, training_set, **config.grid)
+    ### shift reals
+    #print('>>> reals shape: ', grid_reals.shape)
+    #fc_x = 0.5
+    #fc_y = 0.5
+    #im_size = grid_reals.shape[-1]
+    #kernel_loc = 2.*np.pi*fc_x * np.arange(im_size).reshape((1, 1, im_size)) + \
+    #    2.*np.pi*fc_y * np.arange(im_size).reshape((1, im_size, 1))
+    #kernel_cos = np.cos(kernel_loc)
+    #kernel_sin = np.sin(kernel_loc)
+    #reals_t = (grid_reals / 255.) * 2. - 1
+    #reals_t *= kernel_cos
+    #grid_reals = np.rint((reals_t + 1.) * 255. / 2.).clip(0, 255).astype(np.uint8)
+    ### end shift reals
     sched = TrainingSchedule(total_kimg * 1000, training_set, **config.sched)
     grid_fakes = Gs.run(grid_latents, grid_labels, minibatch_size=sched.minibatch//config.num_gpus)
 
@@ -216,6 +230,7 @@ def train_progressive_gan(
     result_subdir = misc.create_result_subdir(config.result_dir, config.desc)
     misc.save_image_grid(grid_reals, os.path.join(result_subdir, 'reals.png'), drange=training_set.dynamic_range, grid_size=grid_size)
     misc.save_image_grid(grid_fakes, os.path.join(result_subdir, 'fakes%06d.png' % 0), drange=drange_net, grid_size=grid_size)
+    #misc.save_image_grid(grid_fakes * kernel_cos * -1., os.path.join(result_subdir, 'fakes%06d_inv_cos.png' % 0), drange=drange_net, grid_size=grid_size)
     summary_log = tf.summary.FileWriter(result_subdir)
     if save_tf_graph:
         summary_log.add_graph(tf.get_default_graph())
