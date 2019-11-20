@@ -18,8 +18,8 @@ class EasyDict(dict):
 #----------------------------------------------------------------------------
 # Paths.
 
-data_dir = '/media/evl/Public/Mahyar/Data/celeba_shift_tfr'
-result_dir = 'results'
+data_dir = '/media/evl/Public/Mahyar/Data/cub_tfr/'
+result_dir = 'results_gdsmall_cub_0'
 
 #----------------------------------------------------------------------------
 # TensorFlow options.
@@ -40,7 +40,7 @@ desc        = 'pgan'                                        # Description string
 random_seed = 1000                                          # Global random seed.
 dataset     = EasyDict()                                    # Options for dataset.load_dataset().
 train       = EasyDict(func='train.train_progressive_gan')  # Options for main training func.
-G           = EasyDict(func='networks.G_paper_out_sh')             # Options for generator network.
+G           = EasyDict(func='networks.G_paper')             # Options for generator network.
 D           = EasyDict(func='networks.D_paper')             # Options for discriminator network.
 G_opt       = EasyDict(beta1=0.0, beta2=0.99, epsilon=1e-8) # Options for generator optimizer.
 D_opt       = EasyDict(beta1=0.0, beta2=0.99, epsilon=1e-8) # Options for discriminator optimizer.
@@ -51,7 +51,8 @@ grid        = EasyDict(size='1080p', layout='random')       # Options for train.
 
 # Dataset (choose one).
 #desc += '-celebahq';            dataset = EasyDict(tfrecord_dir='celebahq'); train.mirror_augment = True
-desc += '-celeba';              dataset = EasyDict(tfrecord_dir='celeba'); train.mirror_augment = True
+#desc += '-celeba';              dataset = EasyDict(tfrecord_dir='celeba'); train.mirror_augment = True
+desc += '-cub';              	dataset = EasyDict(tfrecord_dir='cub'); train.mirror_augment = True
 #desc += '-cifar10';             dataset = EasyDict(tfrecord_dir='cifar10')
 #desc += '-cifar100';            dataset = EasyDict(tfrecord_dir='cifar100')
 #desc += '-svhn';                dataset = EasyDict(tfrecord_dir='svhn')

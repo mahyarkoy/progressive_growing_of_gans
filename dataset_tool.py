@@ -446,7 +446,134 @@ def create_lsun(tfrecord_dir, lmdb_dir, resolution=256, max_images=None):
                     print(sys.exc_info()[1])
                 if tfr.cur_images == max_images:
                     break
-        
+'''
+Sampler for CUB
+order: the numpy array of the index of images to use in sampler.
+test_size: used for automatic setup of test and train order
+'''
+class CUB_Sampler:
+    def __init__(self, cub_dir, im_size=128, idx=0, order=None, test_size=None):
+        self.cub_dir = cub_dir
+        self.fnames = np.array([v[0] for v in self.read_cub_file(cub_dir+'/images.txt')])
+        self.cls = np.array([int(v[0]) for v in self.read_cub_file(cub_dir+'/image_class_labels.txt')]) - 1
+        self.bbox = np.array(
+            [[int(float(v)) for v in bb] for bb in self.read_cub_file(cub_dir+'/bounding_boxes.txt')])
+        self.total_count = self.fnames.shape[0]
+        self.im_size = im_size
+        self.idx = idx
+        if order is None:
+            self.order = np.arange(self.total_count)
+        elif order == 'test':
+            self.order, _ = self.make_test_train_order(test_size)
+        elif order == 'train':
+            _, self.order = self.make_test_train_order(test_size)
+        else:
+            self.order = order
+
+    def read_cub_file(self, fname):
+        vals = list()
+        with open(fname, 'r') as fs:
+            for l in fs:
+                vals.append(l.strip().split(' ')[1:])
+        return vals
+
+    def make_test_train_order(self, test_size):
+        max_per_class = test_size // (np.amax(self.cls)+1)
+        test_select = list()
+        train_select =  list()
+        c_pre = None
+        count = 0
+        for i, c in enumerate(self.cls):
+            if c != c_pre:
+                count = 0
+            if count < max_per_class:
+                test_select.append(i)
+                count += 1
+            else:
+                train_select.append(i)
+            c_pre = c
+        return np.array(test_select), np.array(train_select)
+
+    def sample_data(self, data_size=None):
+        data_size = data_size if data_size is not None else len(self.order)
+        im_data = np.zeros((data_size, self.im_size, self.im_size, 3), dtype=np.float32)
+        for i in range(data_size):
+            im_id = self.order[self.idx]
+            bbox = self.bbox[im_id]
+            fname = self.fnames[im_id]
+            im = self.read_image(self.cub_dir+'/images/'+fname, self.im_size, 
+                sqcrop=False, bbox=(bbox[0], bbox[1], bbox[0]+bbox[2], bbox[1]+bbox[3]))
+            im_data[i, ...] = im
+            self.idx = self.idx + 1 if self.idx < len(self.order) - 1 else 0
+        return im_data
+
+    def read_image(self, im_path, im_size, sqcrop=True, bbox=None, verbose=False, center_crop=None):
+        im = PIL.Image.open(im_path)
+        w, h = im.size
+        crop_size = 128
+        ### celebA specific center crop: im_size cut around center
+        if center_crop is not None:
+            cy, cx = center_crop
+            im_array = np.asarray(im)
+            im_crop = im_array[cy-crop_size//2:cy+crop_size//2, cx-crop_size//2:cx+crop_size//2]
+            im.close()
+            im_re = im_crop
+            if im_size != crop_size:
+                im_pil = PIL.Image.fromarray(im_crop)
+                im_re_pil = im_pil.resize((im_size, im_size), PIL.Image.BILINEAR)
+                im_re = np.asarray(im_re_pil)
+            im_o = (im_re / 255.0) * 2.0 - 1.0
+            im_o = im_o[:, :, :3]
+            return im_o if not verbose else (im_o, w, h)
+        ### crop and resize for all other datasets
+        if sqcrop:
+            im_cut = min(w, h)
+            left = (w - im_cut) //2
+            top = (h - im_cut) //2
+            right = (w + im_cut) //2
+            bottom = (h + im_cut) //2
+            im_sq = im.crop((left, top, right, bottom))
+        elif bbox is not None:
+            left = bbox[0]
+            top = bbox[1]
+            right = bbox[2]
+            bottom = bbox[3]
+            im_sq = im.crop((left, top, right, bottom))
+        else:
+            im_sq = im
+        im_re_pil = im_sq.resize((im_size, im_size), PIL.Image.BILINEAR)
+        im_re = np.array(im_re_pil.getdata())
+        ## next line is because pil removes the channels for black and white images!!!
+        im_re = im_re if len(im_re.shape) > 1 else np.repeat(im_re[..., np.newaxis], 3, axis=1)
+        im_re = im_re.reshape((im_size, im_size, -1))
+        im.close()
+        im_o = im_re[:, :, :3]
+        return im_o if not verbose else (im_o, w, h)
+
+#----------------------------------------------------------------------------
+
+def create_cub(tfrecord_dir, cub_dir, resolution, test_size):
+    print('Loading CUB from "%s"' % cub_dir)
+    ### read cub 128
+    #cub_dir = '/media/evl/Public/Mahyar/Data/cub/CUB_200_2011/'
+    im_size = resolution
+    ### prepare train images
+    cub_sampler = CUB_Sampler(cub_dir, im_size=im_size, order='train', test_size=test_size)
+    im_data = cub_sampler.sample_data()
+    np.random.shuffle(im_data) ### warning: im_data becomes shuffled
+
+    with TFRecordExporter(tfrecord_dir, im_data.shape[0]) as tfr:
+        for img in im_data:
+            assert img.shape == (im_size, im_size, 3)
+            
+            ### shifting the image
+            #img_t = 2.* (img.astype(np.float32) / 255.) - 1.
+            #img_sh = img_t * kernel_cos
+            #img = (img_sh + 1.) / 2. * 255.
+
+            img = img.transpose(2, 0, 1) # HWC => CHW
+            tfr.add_image(img)
+
 #----------------------------------------------------------------------------
 
 def create_celeba(tfrecord_dir, celeba_dir, cx=89, cy=121):
@@ -730,6 +857,13 @@ def execute_cmdline(argv):
     p.add_argument(     'lmdb_dir',         help='Directory containing LMDB database')
     p.add_argument(     '--resolution',     help='Output resolution (default: 256)', type=int, default=256)
     p.add_argument(     '--max_images',     help='Maximum number of images (default: none)', type=int, default=None)
+
+    p = add_command(    'create_cub',       'Create dataset for CUB.',
+                                            'create_cub datasets/cub ~/downloads/cub')
+    p.add_argument(     'tfrecord_dir',     help='New dataset directory to be created')
+    p.add_argument(     'cub_dir',          help='Directory containing CUB')
+    p.add_argument(     '--resolution',     help='Output resolution (default: 128)', type=int, default=128)
+    p.add_argument(     '--test_size',      help='Number of images to hold out across classes (default: 5000)', type=int, default=5000)
 
     p = add_command(    'create_celeba',    'Create dataset for CelebA.',
                                             'create_celeba datasets/celeba ~/downloads/celeba')
