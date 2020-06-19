@@ -421,6 +421,15 @@ def create_lsun(tfrecord_dir, lmdb_dir, resolution=256, max_images=None):
     import lmdb # pip install lmdb
     import cv2 # pip install opencv-python
     import io
+    
+    ### shifting kernel
+    fc_x = 0.5
+    fc_y = 0.5
+    im_size = 128
+    kernel_loc = 2.*np.pi*fc_x * np.arange(im_size).reshape((1, im_size, 1)) + \
+        2.*np.pi*fc_y * np.arange(im_size).reshape((im_size, 1, 1))
+    kernel_cos = np.cos(kernel_loc)
+    
     with lmdb.open(lmdb_dir, readonly=True).begin(write=False) as txn:
         total_images = txn.stat()['entries']
         if max_images is None:
@@ -440,6 +449,12 @@ def create_lsun(tfrecord_dir, lmdb_dir, resolution=256, max_images=None):
                     img = PIL.Image.fromarray(img, 'RGB')
                     img = img.resize((resolution, resolution), PIL.Image.ANTIALIAS)
                     img = np.asarray(img)
+                    
+                    ### shifting the image
+                    #img_t = 2.* (img.astype(np.float32) / 255.) - 1.
+                    #img_sh = img_t * kernel_cos
+                    #img = (img_sh + 1.) / 2. * 255.
+                    
                     img = img.transpose(2, 0, 1) # HWC => CHW
                     tfr.add_image(img)
                 except:
