@@ -7,7 +7,7 @@
 
 import os
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID" # so the IDs match nvidia-smi
-os.environ["CUDA_VISIBLE_DEVICES"] = "1" # "0, 1" for multiple
+os.environ["CUDA_VISIBLE_DEVICES"] = "0, 1" # "0, 1" for multiple
 
 import time
 import numpy as np
@@ -200,16 +200,16 @@ def train_progressive_gan(
     grid_size, grid_reals, grid_labels, grid_latents = setup_snapshot_image_grid(G, training_set, **config.grid)
     ### shift reals
     #print('>>> reals shape: ', grid_reals.shape)
-    #fc_x = 0.5
-    #fc_y = 0.5
-    #im_size = grid_reals.shape[-1]
-    #kernel_loc = 2.*np.pi*fc_x * np.arange(im_size).reshape((1, 1, im_size)) + \
-    #    2.*np.pi*fc_y * np.arange(im_size).reshape((1, im_size, 1))
-    #kernel_cos = np.cos(kernel_loc)
-    #kernel_sin = np.sin(kernel_loc)
-    #reals_t = (grid_reals / 255.) * 2. - 1
-    #reals_t *= kernel_cos
-    #grid_reals = np.rint((reals_t + 1.) * 255. / 2.).clip(0, 255).astype(np.uint8)
+    fc_x = 0.5
+    fc_y = 0.5
+    im_size = grid_reals.shape[-1]
+    kernel_loc = 2.*np.pi*fc_x * np.arange(im_size).reshape((1, 1, im_size)) + \
+        2.*np.pi*fc_y * np.arange(im_size).reshape((1, im_size, 1))
+    kernel_cos = np.cos(kernel_loc)
+    kernel_sin = np.sin(kernel_loc)
+    reals_t = (grid_reals / 255.) * 2. - 1
+    reals_t *= kernel_cos
+    grid_reals_sh = np.rint((reals_t + 1.) * 255. / 2.).clip(0, 255).astype(np.uint8)
     ### end shift reals
     sched = TrainingSchedule(total_kimg * 1000, training_set, **config.sched)
     grid_fakes = Gs.run(grid_latents, grid_labels, minibatch_size=sched.minibatch//config.num_gpus)
@@ -229,8 +229,11 @@ def train_progressive_gan(
     print('Setting up result dir...')
     result_subdir = misc.create_result_subdir(config.result_dir, config.desc)
     misc.save_image_grid(grid_reals, os.path.join(result_subdir, 'reals.png'), drange=training_set.dynamic_range, grid_size=grid_size)
+    ### drawing shifted real images
+    misc.save_image_grid(grid_reals_sh, os.path.join(result_subdir, 'reals_sh.png'), drange=training_set.dynamic_range, grid_size=grid_size)
     misc.save_image_grid(grid_fakes, os.path.join(result_subdir, 'fakes%06d.png' % 0), drange=drange_net, grid_size=grid_size)
-    #misc.save_image_grid(grid_fakes * kernel_cos * -1., os.path.join(result_subdir, 'fakes%06d_inv_cos.png' % 0), drange=drange_net, grid_size=grid_size)
+    ### drawing shifted fake images
+    misc.save_image_grid(grid_fakes*kernel_cos, os.path.join(result_subdir, 'fakes%06d_sh.png' % 0), drange=drange_net, grid_size=grid_size)
     summary_log = tf.summary.FileWriter(result_subdir)
     if save_tf_graph:
         summary_log.add_graph(tf.get_default_graph())
@@ -291,6 +294,8 @@ def train_progressive_gan(
             if cur_tick % image_snapshot_ticks == 0 or done:
                 grid_fakes = Gs.run(grid_latents, grid_labels, minibatch_size=sched.minibatch//config.num_gpus)
                 misc.save_image_grid(grid_fakes, os.path.join(result_subdir, 'fakes%06d.png' % (cur_nimg // 1000)), drange=drange_net, grid_size=grid_size)
+                ### drawing shifted fake images
+                misc.save_image_grid(grid_fakes*kernel_cos, os.path.join(result_subdir, 'fakes%06d_sh.png' % (cur_nimg // 1000)), drange=drange_net, grid_size=grid_size)
             if cur_tick % network_snapshot_ticks == 0 or done:
                 misc.save_pkl((G, D, Gs), os.path.join(result_subdir, 'network-snapshot-%06d.pkl' % (cur_nimg // 1000)))
 
