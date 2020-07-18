@@ -590,6 +590,52 @@ def create_cub(tfrecord_dir, cub_dir, resolution, test_size):
             tfr.add_image(img)
 
 #----------------------------------------------------------------------------
+'''
+Sampler for planar 2D cosine with uniform amplitude [-1, 1)
+'''
+class COS_Sampler:
+    def __init__(self, im_size, fc_x, fc_y, channels=1):
+        self.im_size = im_size
+        self.ch = channels
+        self.ksize = im_size
+        self.fc_x = fc_x
+        self.fc_y = fc_y
+        self.kernel_loc = 2.*np.pi*fc_x * np.arange(self.ksize).reshape((1, 1, self.ksize, 1)) + \
+            2.*np.pi*fc_y * np.arange(self.ksize).reshape((1, self.ksize, 1, 1))
+
+    def sample_data(self, data_size):
+        #amps = np.random.uniform(size=(data_size, 1, 1, self.ch)) * 2. - 1.
+        mag = np.clip(np.random.normal(loc=0.5, scale=0.1, size=(data_size, 1, 1, self.ch)), 0., 1.)
+        phase = np.clip(np.random.normal(loc=0., scale=0.2*np.pi, size=(data_size, 1, 1, self.ch)), -np.pi, np.pi)
+        phase = np.random.choice([0., np.pi], size=(data_size, 1, 1, self.ch)) \
+                if (self.fc_x == 0 and self.fc_y == 0) or \
+                (np.abs(self.fc_x) == 0.5 and self.fc_y == 0) or \
+                (self.fc_x == 0 and np.abs(self.fc_y) == 0.5) or \
+                (np.abs(self.fc_x) == 0.5 and np.abs(self.fc_y) == 0.5) else phase
+        return mag * np.cos(self.kernel_loc + phase)
+
+def create_cosine(tfrecord_dir, resolution=128, channels=1):
+    print('Creating Cosine from "%s"' % celeba_dir)
+    data_size = 50000
+    freq_centers = [(0/128., 0/128.)]
+    im_size = resolution
+    im_data = np.zeros((data_size, im_size, im_size, channels))
+    freq_str = ''
+    for fc in freq_centers:
+       sampler = COS_Sampler(im_size=im_size, fc_x=fc[0], fc_y=fc[1], channels=channels)
+       im_data += sampler.sample_data(data_size)
+       freq_str += 'fx{}_fy{}_'.format(int(fc[0]*im_size), int(fc[1]*im_size))
+    im_data /= len(freq_centers)
+    im_data = 255. * (im_data + 1.) / 2.
+    freq_str += f'size{im_size}'
+    print(f'Created Cosine: {freq_str}')
+    
+    with TFRecordExporter(tfrecord_dir, im_data.shape[0]) as tfr:
+        for img in im_data:
+            img = img.transpose(2, 0, 1) # HWC => CHW
+            tfr.add_image(img)
+
+#----------------------------------------------------------------------------
 
 def create_celeba(tfrecord_dir, celeba_dir, cx=89, cy=121):
     print('Loading CelebA from "%s"' % celeba_dir)
@@ -879,6 +925,12 @@ def execute_cmdline(argv):
     p.add_argument(     'cub_dir',          help='Directory containing CUB')
     p.add_argument(     '--resolution',     help='Output resolution (default: 128)', type=int, default=128)
     p.add_argument(     '--test_size',      help='Number of images to hold out across classes (default: 5000)', type=int, default=5000)
+
+    p = add_command(    'create_cosine',    'Create dataset for Cosine.',
+                                            'create_cosine datasets/cosine_fx64_fy64_size128')
+    p.add_argument(     'tfrecord_dir',     help='New dataset directory to be created')
+    p.add_argument(     '--resolution',     help='Output resolution (default: 128)', type=int, default=128)
+    p.add_argument(     '--channels',       help='Number of channels (default: 1)', type=int, default=1)
 
     p = add_command(    'create_celeba',    'Create dataset for CelebA.',
                                             'create_celeba datasets/celeba ~/downloads/celeba')

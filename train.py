@@ -19,6 +19,9 @@ import dataset
 import misc
 import sys
 
+sys.path.insert(1, '/dresden/users/mk1391/evl/Data')
+from ganist.util import cosine_eval
+
 #----------------------------------------------------------------------------
 # Choose the size and contents of the image snapshot grids that are exported
 # periodically during training.
@@ -53,6 +56,20 @@ def setup_snapshot_image_grid(G, training_set,
     # Generate latents.
     latents = misc.random_latents(gw * gh, G)
     return (gw, gh), reals, labels, latents
+
+def sample_true(training_set, data_size, dtype, batch_size=32):
+    im_data = np.zeros([(data_size // batch_size) * batch_size + batch_size] + training_set.shape, dtype=dtype)
+    for batch_start in range(0, data_size, batch_size):
+        im_data[batch_start:batch_start+batch_size, ...] = training_set.get_minibatch_np(batch_size)
+    return im_data[:data_size]
+
+def sample_gen(Gs, data_size, dtype, batch_size=32):
+    im_data = np.zeros([(data_size // batch_size) * batch_size + batch_size] + Gs.input_shapes[0][1:], dtype=dtype)
+    for batch_start in range(0, data_size, batch_size):
+        latents = np.random.randn(batch_size, *Gs.input_shapes[0][1:])
+        labels = np.zeros([latents.shape[0]] + Gs.input_shapes[1][1:])
+        im_data[batch_start:batch_start+batch_size, ...] = Gs.run(latents, labels)
+    return im_data[:data_size]
 
 #----------------------------------------------------------------------------
 # Just-in-time processing of training images before feeding them to the networks.
@@ -215,7 +232,7 @@ def train_progressive_gan(
     grid_fakes = Gs.run(grid_latents, grid_labels, minibatch_size=sched.minibatch//config.num_gpus)
 
     ### fft drawing
-    #sys.path.insert(0, '/home/mahyar/CV_Res/ganist')
+    #sys.path.insert(1, '/home/mahyar/CV_Res/ganist')
     #from fig_draw import apply_fft_win
     #data_size = 1000
     #latents = np.random.randn(data_size, *Gs.input_shapes[0][1:])
@@ -239,6 +256,14 @@ def train_progressive_gan(
         summary_log.add_graph(tf.get_default_graph())
     if save_weight_histograms:
         G.setup_weight_histograms(); D.setup_weight_histograms()
+
+    ### True cosine fft eval
+    fft_data_size = 10000
+    im_size = training_set.shape[1]
+    freq_centers = [(0/128., 0/128.)]
+    true_samples = 
+        sample_true(training_set, fft_data_size, dtype=training_set.dtype, batch_size=32).transpose(0, 2, 3, 1) / 255. * 2. - 1.
+    true_fft, true_fft_hann, true_hist = cosine_eval(true_samples, 'true', freq_centers, log_dir=result_subdir)
 
     print('Training...')
     cur_nimg = int(resume_kimg * 1000)
@@ -296,6 +321,9 @@ def train_progressive_gan(
                 misc.save_image_grid(grid_fakes, os.path.join(result_subdir, 'fakes%06d.png' % (cur_nimg // 1000)), drange=drange_net, grid_size=grid_size)
                 ### drawing shifted fake images
                 misc.save_image_grid(grid_fakes*kernel_cos, os.path.join(result_subdir, 'fakes%06d_sh.png' % (cur_nimg // 1000)), drange=drange_net, grid_size=grid_size)
+                ### Gen fft eval
+                gen_samples = sample_gen(self.Gs, fft_data_size, dtype=training_set.dtype, batch_size=32).transpose(0, 2, 3, 1) / 255. * 2. - 1.
+                cosine_eval(gen_samples, f'gen_{cur_nimg//1000:06d}', freq_centers, log_dir=result_subdir, true_fft=true_fft)
             if cur_tick % network_snapshot_ticks == 0 or done:
                 misc.save_pkl((G, D, Gs), os.path.join(result_subdir, 'network-snapshot-%06d.pkl' % (cur_nimg // 1000)))
 
