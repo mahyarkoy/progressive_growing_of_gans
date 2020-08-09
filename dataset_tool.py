@@ -615,7 +615,6 @@ class COS_Sampler:
         return mag * np.cos(self.kernel_loc + phase)
 
 def create_cosine(tfrecord_dir, resolution=128, channels=1):
-    print('Creating Cosine from "%s"' % celeba_dir)
     data_size = 50000
     freq_centers = [(0/128., 0/128.)]
     im_size = resolution
