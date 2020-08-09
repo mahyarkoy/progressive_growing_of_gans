@@ -60,11 +60,11 @@ def setup_snapshot_image_grid(G, training_set,
 def sample_true(training_set, data_size, dtype, batch_size=32):
     im_data = np.zeros([(data_size // batch_size) * batch_size + batch_size] + training_set.shape, dtype=dtype)
     for batch_start in range(0, data_size, batch_size):
-        im_data[batch_start:batch_start+batch_size, ...] = training_set.get_minibatch_np(batch_size)
+        im_data[batch_start:batch_start+batch_size, ...], _ = training_set.get_minibatch_np(batch_size)
     return im_data[:data_size]
 
 def sample_gen(Gs, data_size, dtype, batch_size=32):
-    im_data = np.zeros([(data_size // batch_size) * batch_size + batch_size] + Gs.input_shapes[0][1:], dtype=dtype)
+    im_data = np.zeros([(data_size // batch_size) * batch_size + batch_size] + Gs.output_shapes[0][1:], dtype=dtype)
     for batch_start in range(0, data_size, batch_size):
         latents = np.random.randn(batch_size, *Gs.input_shapes[0][1:])
         labels = np.zeros([latents.shape[0]] + Gs.input_shapes[1][1:])
@@ -261,8 +261,7 @@ def train_progressive_gan(
     fft_data_size = 10000
     im_size = training_set.shape[1]
     freq_centers = [(0/128., 0/128.)]
-    true_samples = 
-        sample_true(training_set, fft_data_size, dtype=training_set.dtype, batch_size=32).transpose(0, 2, 3, 1) / 255. * 2. - 1.
+    true_samples = sample_true(training_set, fft_data_size, dtype=training_set.dtype, batch_size=32).transpose(0, 2, 3, 1) / 255. * 2. - 1.
     true_fft, true_fft_hann, true_hist = cosine_eval(true_samples, 'true', freq_centers, log_dir=result_subdir)
 
     print('Training...')
@@ -322,8 +321,8 @@ def train_progressive_gan(
                 ### drawing shifted fake images
                 misc.save_image_grid(grid_fakes*kernel_cos, os.path.join(result_subdir, 'fakes%06d_sh.png' % (cur_nimg // 1000)), drange=drange_net, grid_size=grid_size)
                 ### Gen fft eval
-                gen_samples = sample_gen(self.Gs, fft_data_size, dtype=training_set.dtype, batch_size=32).transpose(0, 2, 3, 1)
-                cosine_eval(gen_samples, f'gen_{cur_nimg//1000:06d}', freq_centers, log_dir=result_subdir, true_fft=true_fft, true_fft_hann=true_fft_hann)
+                gen_samples = sample_gen(Gs, fft_data_size, dtype=training_set.dtype, batch_size=32).transpose(0, 2, 3, 1)
+                cosine_eval(gen_samples, f'gen_{cur_nimg//1000:06d}', freq_centers, log_dir=result_subdir, true_fft=true_fft, true_fft_hann=true_fft_hann, true_hist=true_hist)
             if cur_tick % network_snapshot_ticks == 0 or done:
                 misc.save_pkl((G, D, Gs), os.path.join(result_subdir, 'network-snapshot-%06d.pkl' % (cur_nimg // 1000)))
 

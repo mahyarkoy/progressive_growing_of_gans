@@ -18,8 +18,8 @@ class EasyDict(dict):
 #----------------------------------------------------------------------------
 # Paths.
 
-data_dir = '/dresden/users/mk1391/evl/Data/lsun_bedroom_shift_tfr/'
-result_dir = 'results_gdsmall_sbedroom_0'
+data_dir = '/dresden/users/mk1391/evl/Data/cos_fx3fy3_size128_mnorm01p0pi/'
+result_dir = 'results_gdsmall_cos_fx3fy3_size128_mnorm01p0pi_0'
 
 #----------------------------------------------------------------------------
 # TensorFlow options.
@@ -50,6 +50,7 @@ sched       = EasyDict()                                    # Options for train.
 grid        = EasyDict(size='1080p', layout='random')       # Options for train.setup_snapshot_image_grid().
 
 # Dataset (choose one).
+desc += '-cosine';        dataset = EasyDict(tfrecord_dir='cos');        train.mirror_augment = False
 #desc += '-celebahq';            dataset = EasyDict(tfrecord_dir='celebahq'); train.mirror_augment = True
 #desc += '-celeba';              dataset = EasyDict(tfrecord_dir='celeba'); train.mirror_augment = False
 #desc += '-cub';              	dataset = EasyDict(tfrecord_dir='cub'); train.mirror_augment = True
@@ -60,7 +61,7 @@ grid        = EasyDict(size='1080p', layout='random')       # Options for train.
 #desc += '-mnistrgb';            dataset = EasyDict(tfrecord_dir='mnistrgb')
 #desc += '-syn1024rgb';          dataset = EasyDict(class_name='dataset.SyntheticDataset', resolution=1024, num_channels=3)
 #desc += '-lsun-airplane';       dataset = EasyDict(tfrecord_dir='lsun-airplane-100k');       train.mirror_augment = True
-desc += '-lsun-bedroom';        dataset = EasyDict(tfrecord_dir='lsun-bedroom-100k');        train.mirror_augment = False
+#desc += '-lsun-bedroom';        dataset = EasyDict(tfrecord_dir='lsun-bedroom-100k');        train.mirror_augment = False
 #desc += '-lsun-bicycle';        dataset = EasyDict(tfrecord_dir='lsun-bicycle-100k');        train.mirror_augment = True
 #desc += '-lsun-bird';           dataset = EasyDict(tfrecord_dir='lsun-bird-100k');           train.mirror_augment = True
 #desc += '-lsun-boat';           dataset = EasyDict(tfrecord_dir='lsun-boat-100k');           train.mirror_augment = True

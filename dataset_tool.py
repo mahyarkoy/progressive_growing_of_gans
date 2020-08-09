@@ -616,7 +616,7 @@ class COS_Sampler:
 
 def create_cosine(tfrecord_dir, resolution=128, channels=1):
     data_size = 50000
-    freq_centers = [(0/128., 0/128.)]
+    freq_centers = [(3/128., 3/128.)]
     im_size = resolution
     im_data = np.zeros((data_size, im_size, im_size, channels))
     freq_str = ''
