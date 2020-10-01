@@ -736,7 +736,10 @@ def G_fsg(
             ### end of frequency shifted gans
             x = block(x, res)
             img = torgb(x, res)
-            img = img + sum(fsg_list) if len(fsg_list) > 0 and res == resolution_log2 else img
+            if len(fsg_list) > 0 and res == resolution_log2:
+                img_o = img + sum(fsg_list)
+                fsg_list.append(img)
+                img = img_o
             images_out = upscale2d(images_out)
             with tf.variable_scope('Grow_lod%d' % lod):
                 images_out = lerp_clip(img, images_out, lod_in - lod)
@@ -752,6 +755,8 @@ def G_fsg(
         images_out = grow(combo_in, 2, resolution_log2 - 2)
         
     assert images_out.dtype == tf.as_dtype(dtype)
+    if 'return_fsg' in kwargs.keys() and kwargs['return_fsg'] == True:
+        return tuple(fsg_list+[images_out])
     images_out = tf.identity(images_out, name='images_out')
     return images_out
 

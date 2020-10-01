@@ -7,7 +7,7 @@
 
 import os
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID" # so the IDs match nvidia-smi
-os.environ["CUDA_VISIBLE_DEVICES"] = "0, 1" # "0, 1" for multiple
+os.environ["CUDA_VISIBLE_DEVICES"] = "2" # "0, 1" for multiple
 
 import time
 import numpy as np
@@ -20,7 +20,7 @@ import misc
 import sys
 
 sys.path.insert(1, '/dresden/users/mk1391/evl/Data')
-from ganist.util import cosine_eval, fractal_eval
+from ganist.util import cosine_eval, fractal_eval, pyramid_draw, apply_fft_win
 
 #----------------------------------------------------------------------------
 # Choose the size and contents of the image snapshot grids that are exported
@@ -70,6 +70,13 @@ def sample_gen(Gs, data_size, dtype, batch_size=32):
         labels = np.zeros([latents.shape[0]] + Gs.input_shapes[1][1:])
         im_data[batch_start:batch_start+batch_size, ...] = Gs.run(latents, labels)
     return im_data[:data_size]
+
+
+def draw_gen_fsg(Gs, data_size, log_path, batch_size=4):
+    latents = np.random.randn(data_size, *Gs.input_shapes[0][1:])
+    images = Gs.run(latents, None, is_validation=True, minibatch_size=batch_size, return_fsg=True)
+    images = [im.transpose(0, 2, 3, 1) for im in images]
+    pyramid_draw(images, log_path)
 
 #----------------------------------------------------------------------------
 # Just-in-time processing of training images before feeding them to the networks.
@@ -170,7 +177,7 @@ def train_progressive_gan(
 
     maintenance_start_time = time.time()
     training_set = dataset.load_dataset(data_dir=config.data_dir, verbose=True, **config.dataset)
-    #resume_run_id = '/media/evl/Public/Mahyar/pggan_logs/logs_celeba128cc_sh/results_0/000-pgan-celeba-preset-v2-2gpus-fp32/network-snapshot-010211.pkl'
+    resume_run_id = '/dresden/users/mk1391/evl/pggan_logs/logs_celeba128cc/fsg16_results_0/000-pgan-celeba-preset-v2-2gpus-fp32/network-snapshot-010211.pkl'
 
     # Construct networks.
     with tf.device('/gpu:0'):
@@ -185,6 +192,11 @@ def train_progressive_gan(
             Gs = G.clone('Gs')
         Gs_update_op = Gs.setup_as_moving_average_of(G, beta=G_smoothing)
     G.print_layers(); D.print_layers()
+
+    ### pyramid draw fsg (comment out for actual training to happen)
+    draw_gen_fsg(Gs, 10, os.path.join(result_subdir, 'pggan_fsg_draw.png'))
+    print('>>> done printing fsgs.')
+    return
 
     print('Building TensorFlow graph...')
     with tf.name_scope('Inputs'):
