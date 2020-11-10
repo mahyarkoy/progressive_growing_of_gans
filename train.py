@@ -74,7 +74,9 @@ def sample_gen(Gs, data_size, dtype, batch_size=32):
 
 def draw_gen_fsg(Gs, data_size, log_path, batch_size=4):
     latents = np.random.randn(data_size, *Gs.input_shapes[0][1:])
-    images = Gs.run(latents, None, is_validation=True, minibatch_size=batch_size, return_fsg=True)
+    labels = np.zeros([latents.shape[0]] + Gs.input_shapes[1][1:])
+    images = Gs.run(latents, labels, is_validation=True, minibatch_size=batch_size, return_fsg=True)
+    #print(f'>>> draw_fsg size: {images.shape}')
     images = [im.transpose(0, 2, 3, 1) for im in images]
     pyramid_draw(images, log_path)
 
@@ -178,23 +180,25 @@ def train_progressive_gan(
     maintenance_start_time = time.time()
     training_set = dataset.load_dataset(data_dir=config.data_dir, verbose=True, **config.dataset)
     resume_run_id = '/dresden/users/mk1391/evl/pggan_logs/logs_celeba128cc/fsg16_results_0/000-pgan-celeba-preset-v2-2gpus-fp32/network-snapshot-010211.pkl'
-
+    resume_with_new_nets = True
     # Construct networks.
     with tf.device('/gpu:0'):
-        if resume_run_id is not None:
-            network_pkl = misc.locate_network_pkl(resume_run_id, resume_snapshot)
-            print('Loading networks from "%s"...' % network_pkl)
-            G, D, Gs = misc.load_pkl(network_pkl)
-        else:
+        if resume_run_id is None or resume_with_new_nets:
             print('Constructing networks...')
             G = tfutil.Network('G', num_channels=training_set.shape[0], resolution=training_set.shape[1], label_size=training_set.label_size, **config.G)
             D = tfutil.Network('D', num_channels=training_set.shape[0], resolution=training_set.shape[1], label_size=training_set.label_size, **config.D)
             Gs = G.clone('Gs')
+        if resume_run_id is not None:
+            network_pkl = misc.locate_network_pkl(resume_run_id, resume_snapshot)
+            print('Loading networks from "%s"...' % network_pkl)
+            rG, rD, rGs = misc.load_pkl(network_pkl)
+            if resume_with_new_nets: G.copy_vars_from(rG); D.copy_vars_from(rD); Gs.copy_vars_from(rGs)
+            else: G = rG; D = rD; Gs = rGs
         Gs_update_op = Gs.setup_as_moving_average_of(G, beta=G_smoothing)
     G.print_layers(); D.print_layers()
 
     ### pyramid draw fsg (comment out for actual training to happen)
-    draw_gen_fsg(Gs, 10, os.path.join(result_subdir, 'pggan_fsg_draw.png'))
+    draw_gen_fsg(Gs, 10, os.path.join(config.result_dir, 'pggan_fsg_draw.png'))
     print('>>> done printing fsgs.')
     return
 

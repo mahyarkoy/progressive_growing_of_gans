@@ -18,7 +18,8 @@ class EasyDict(dict):
 #----------------------------------------------------------------------------
 # Paths.
 
-data_dir = '/dresden/users/mk1391/evl/Data/koch_snowflakes_l5_s1024'
+#data_dir = '/dresden/users/mk1391/evl/Data/koch_snowflakes_l5_s1024'
+data_dir = '/dresden/users/mk1391/evl/Data/celeba_tfr'
 result_dir = 'results_fsg_draw'
 
 #----------------------------------------------------------------------------
