@@ -179,8 +179,8 @@ def train_progressive_gan(
 
     maintenance_start_time = time.time()
     training_set = dataset.load_dataset(data_dir=config.data_dir, verbose=True, **config.dataset)
-    resume_run_id = '/dresden/users/mk1391/evl/pggan_logs/logs_celeba128cc/fsg16_results_0/000-pgan-celeba-preset-v2-2gpus-fp32/network-snapshot-010211.pkl'
-    resume_with_new_nets = True
+    #resume_run_id = '/dresden/users/mk1391/evl/pggan_logs/logs_celeba128cc/fsg16_results_0/000-pgan-celeba-preset-v2-2gpus-fp32/network-snapshot-010211.pkl'
+    #resume_with_new_nets = False
     # Construct networks.
     with tf.device('/gpu:0'):
         if resume_run_id is None or resume_with_new_nets:
@@ -198,9 +198,9 @@ def train_progressive_gan(
     G.print_layers(); D.print_layers()
 
     ### pyramid draw fsg (comment out for actual training to happen)
-    draw_gen_fsg(Gs, 10, os.path.join(config.result_dir, 'pggan_fsg_draw.png'))
-    print('>>> done printing fsgs.')
-    return
+    #draw_gen_fsg(Gs, 10, os.path.join(config.result_dir, 'pggan_fsg_draw.png'))
+    #print('>>> done printing fsgs.')
+    #return
 
     print('Building TensorFlow graph...')
     with tf.name_scope('Inputs'):
@@ -273,13 +273,13 @@ def train_progressive_gan(
     if save_weight_histograms:
         G.setup_weight_histograms(); D.setup_weight_histograms()
 
-    ### True cosine fft eval
-    fft_data_size = 1000
-    #im_size = training_set.shape[1]
-    #freq_centers = [(0/128., 0/128.)]
-    true_samples = sample_true(training_set, fft_data_size, dtype=training_set.dtype, batch_size=32).transpose(0, 2, 3, 1) / 255. * 2. - 1.
-    #true_fft, true_fft_hann, true_hist = cosine_eval(true_samples, 'true', freq_centers, log_dir=result_subdir)
-    fractal_eval(true_samples, f'koch_snowflake_true', result_subdir)
+    #### True cosine fft eval
+    ##fft_data_size = 1000
+    ##im_size = training_set.shape[1]
+    ##freq_centers = [(0/128., 0/128.)]
+    #true_samples = sample_true(training_set, fft_data_size, dtype=training_set.dtype, batch_size=32).transpose(0, 2, 3, 1) / 255. * 2. - 1.
+    ##true_fft, true_fft_hann, true_hist = cosine_eval(true_samples, 'true', freq_centers, log_dir=result_subdir)
+    #fractal_eval(true_samples, f'koch_snowflake_true', result_subdir)
 
     print('Training...')
     cur_nimg = int(resume_kimg * 1000)
@@ -337,10 +337,12 @@ def train_progressive_gan(
                 misc.save_image_grid(grid_fakes, os.path.join(result_subdir, 'fakes%06d.png' % (cur_nimg // 1000)), drange=drange_net, grid_size=grid_size)
                 ### drawing shifted fake images
                 #misc.save_image_grid(grid_fakes*kernel_cos, os.path.join(result_subdir, 'fakes%06d_sh.png' % (cur_nimg // 1000)), drange=drange_net, grid_size=grid_size)
+                ### drawing fsg
+                draw_gen_fsg(Gs, 10, os.path.join(config.result_dir, 'fakes%06d_fsg_draw.png' % (cur_nimg // 1000)))
                 ### Gen fft eval
-                gen_samples = sample_gen(Gs, fft_data_size, dtype=training_set.dtype, batch_size=32).transpose(0, 2, 3, 1)
+                #gen_samples = sample_gen(Gs, fft_data_size, dtype=training_set.dtype, batch_size=32).transpose(0, 2, 3, 1)
                 #cosine_eval(gen_samples, f'gen_{cur_nimg//1000:06d}', freq_centers, log_dir=result_subdir, true_fft=true_fft, true_fft_hann=true_fft_hann, true_hist=true_hist)
-                fractal_eval(gen_samples, f'koch_snowflake_fakes{cur_nimg//1000:06d}', result_subdir)
+                #fractal_eval(gen_samples, f'koch_snowflake_fakes{cur_nimg//1000:06d}', result_subdir)
             if cur_tick % network_snapshot_ticks == 0 or done:
                 misc.save_pkl((G, D, Gs), os.path.join(result_subdir, 'network-snapshot-%06d.pkl' % (cur_nimg // 1000)))
 
