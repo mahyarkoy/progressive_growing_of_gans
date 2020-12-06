@@ -18,9 +18,12 @@ class EasyDict(dict):
 #----------------------------------------------------------------------------
 # Paths.
 
+data_dir = '/dresden/users/mk1391/evl/Data/cos_fx64fy64_size128_mnorm01p0pi/'
+result_dir = 'results_gdthin_cos_fx64fy64_size128_mnorm01p0pi_0'
+
 #data_dir = '/dresden/users/mk1391/evl/Data/koch_snowflakes_l5_s1024'
-data_dir = '/dresden/users/mk1391/evl/Data/celeba_tfr'
-result_dir = 'results_fsg16_noshift_celeba128cc'
+#data_dir = '/dresden/users/mk1391/evl/Data/celeba_tfr'
+#result_dir = 'results_fsg16_noshift_celeba128cc'
 
 #----------------------------------------------------------------------------
 # TensorFlow options.
@@ -52,9 +55,9 @@ grid        = EasyDict(size='1080p', layout='random')       # Options for train.
 
 # Dataset (choose one).
 #desc += '-fractal';              dataset = EasyDict(tfrecord_dir='koch'); train.mirror_augment = True
-#desc += '-cosine';        dataset = EasyDict(tfrecord_dir='cos');        train.mirror_augment = False
+desc += '-cosine';        dataset = EasyDict(tfrecord_dir='cos');        train.mirror_augment = False
 #desc += '-celebahq';            dataset = EasyDict(tfrecord_dir='celebahq'); train.mirror_augment = True
-desc += '-celeba';              dataset = EasyDict(tfrecord_dir='celeba'); train.mirror_augment = True
+#desc += '-celeba';              dataset = EasyDict(tfrecord_dir='celeba'); train.mirror_augment = True
 #desc += '-cub';              	dataset = EasyDict(tfrecord_dir='cub'); train.mirror_augment = True
 #desc += '-cifar10';             dataset = EasyDict(tfrecord_dir='cifar10')
 #desc += '-cifar100';            dataset = EasyDict(tfrecord_dir='cifar100')
