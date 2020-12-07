@@ -7,7 +7,7 @@
 
 import os
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID" # so the IDs match nvidia-smi
-os.environ["CUDA_VISIBLE_DEVICES"] = "2" # "0, 1" for multiple
+os.environ["CUDA_VISIBLE_DEVICES"] = "2, 3" # "0, 1" for multiple
 
 import time
 import numpy as np
@@ -63,13 +63,11 @@ def sample_true(training_set, data_size, dtype, batch_size=32):
         im_data[batch_start:batch_start+batch_size, ...], _ = training_set.get_minibatch_np(batch_size)
     return im_data[:data_size]
 
-def sample_gen(Gs, data_size, dtype, batch_size=32):
-    im_data = np.zeros([(data_size // batch_size) * batch_size + batch_size] + Gs.output_shapes[0][1:], dtype=dtype)
-    for batch_start in range(0, data_size, batch_size):
-        latents = np.random.randn(batch_size, *Gs.input_shapes[0][1:])
-        labels = np.zeros([latents.shape[0]] + Gs.input_shapes[1][1:])
-        im_data[batch_start:batch_start+batch_size, ...] = Gs.run(latents, labels)
-    return im_data[:data_size]
+def sample_gen(Gs, data_size, dtype=None, batch_size=4):
+    latents = np.random.randn(data_size, *Gs.input_shapes[0][1:])
+    labels = np.zeros([latents.shape[0]] + Gs.input_shapes[1][1:])
+    im_data = Gs.run(latents, labels, minibatch_size=batch_size)
+    return im_data
 
 
 def draw_gen_fsg(Gs, data_size, log_path, batch_size=4):
@@ -340,7 +338,10 @@ def train_progressive_gan(
                 ### drawing fsg
                 #draw_gen_fsg(Gs, 10, os.path.join(config.result_dir, 'fakes%06d_fsg_draw.png' % (cur_nimg // 1000)))
                 ### Gen fft eval
-                gen_samples = sample_gen(Gs, fft_data_size, dtype=training_set.dtype, batch_size=32).transpose(0, 2, 3, 1)
+                gen_samples = sample_gen(Gs, fft_data_size).transpose(0, 2, 3, 1)
+                #print(f'>>> fake_samples: max={np.amax(grid_fakes)} min={np.amin(grid_fakes)}')
+                #print(f'>>> gen_samples: max={np.amax(gen_samples)} min={np.amin(gen_samples)}')
+                #misc.save_image_grid(gen_samples[:25], os.path.join(result_subdir, 'fakes%06d_gsample.png' % (cur_nimg // 1000)), drange=drange_net, grid_size=grid_size)
                 cosine_eval(gen_samples, f'gen_{cur_nimg//1000:06d}', freq_centers, log_dir=result_subdir, true_fft=true_fft, true_fft_hann=true_fft_hann, true_hist=true_hist)
                 #fractal_eval(gen_samples, f'koch_snowflake_fakes{cur_nimg//1000:06d}', result_subdir)
             if cur_tick % network_snapshot_ticks == 0 or done:

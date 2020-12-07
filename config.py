@@ -19,7 +19,7 @@ class EasyDict(dict):
 # Paths.
 
 data_dir = '/dresden/users/mk1391/evl/Data/cos_fx64fy64_size128_mnorm01p0pi/'
-result_dir = 'results_gdthin_cos_fx64fy64_size128_mnorm01p0pi_0'
+result_dir = 'results_gdthin_cos_fx64fy64_size128_mnorm01p0pi_test'
 
 #data_dir = '/dresden/users/mk1391/evl/Data/koch_snowflakes_l5_s1024'
 #data_dir = '/dresden/users/mk1391/evl/Data/celeba_tfr'
@@ -44,8 +44,8 @@ desc        = 'pgan'                                        # Description string
 random_seed = 1000                                          # Global random seed.
 dataset     = EasyDict()                                    # Options for dataset.load_dataset().
 train       = EasyDict(func='train.train_progressive_gan')  # Options for main training func.
-G           = EasyDict(func='networks.G_fsg_noshift')             # Options for generator network.
-D           = EasyDict(func='networks.D_paper')             # Options for discriminator network.
+G           = EasyDict(func='networks.G_paper_thin')             # Options for generator network.
+D           = EasyDict(func='networks.D_paper_thin')             # Options for discriminator network.
 G_opt       = EasyDict(beta1=0.0, beta2=0.99, epsilon=1e-8) # Options for generator optimizer.
 D_opt       = EasyDict(beta1=0.0, beta2=0.99, epsilon=1e-8) # Options for discriminator optimizer.
 G_loss      = EasyDict(func='loss.G_wgan_acgan')            # Options for generator loss.
