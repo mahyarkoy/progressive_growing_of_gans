@@ -272,11 +272,11 @@ def train_progressive_gan(
         G.setup_weight_histograms(); D.setup_weight_histograms()
 
     #### True cosine fft eval
-    fft_data_size = 1000
-    im_size = training_set.shape[1]
-    freq_centers = [(64/128., 64/128.)]
-    true_samples = sample_true(training_set, fft_data_size, dtype=training_set.dtype, batch_size=32).transpose(0, 2, 3, 1) / 255. * 2. - 1.
-    true_fft, true_fft_hann, true_hist = cosine_eval(true_samples, 'true', freq_centers, log_dir=result_subdir)
+    #fft_data_size = 1000
+    #im_size = training_set.shape[1]
+    #freq_centers = [(64/128., 64/128.)]
+    #true_samples = sample_true(training_set, fft_data_size, dtype=training_set.dtype, batch_size=32).transpose(0, 2, 3, 1) / 255. * 2. - 1.
+    #true_fft, true_fft_hann, true_hist = cosine_eval(true_samples, 'true', freq_centers, log_dir=result_subdir)
     #fractal_eval(true_samples, f'koch_snowflake_true', result_subdir)
 
     print('Training...')
@@ -338,11 +338,11 @@ def train_progressive_gan(
                 ### drawing fsg
                 #draw_gen_fsg(Gs, 10, os.path.join(config.result_dir, 'fakes%06d_fsg_draw.png' % (cur_nimg // 1000)))
                 ### Gen fft eval
-                gen_samples = sample_gen(Gs, fft_data_size).transpose(0, 2, 3, 1)
+                #gen_samples = sample_gen(Gs, fft_data_size).transpose(0, 2, 3, 1)
                 #print(f'>>> fake_samples: max={np.amax(grid_fakes)} min={np.amin(grid_fakes)}')
                 #print(f'>>> gen_samples: max={np.amax(gen_samples)} min={np.amin(gen_samples)}')
                 #misc.save_image_grid(gen_samples[:25], os.path.join(result_subdir, 'fakes%06d_gsample.png' % (cur_nimg // 1000)), drange=drange_net, grid_size=grid_size)
-                cosine_eval(gen_samples, f'gen_{cur_nimg//1000:06d}', freq_centers, log_dir=result_subdir, true_fft=true_fft, true_fft_hann=true_fft_hann, true_hist=true_hist)
+                #cosine_eval(gen_samples, f'gen_{cur_nimg//1000:06d}', freq_centers, log_dir=result_subdir, true_fft=true_fft, true_fft_hann=true_fft_hann, true_hist=true_hist)
                 #fractal_eval(gen_samples, f'koch_snowflake_fakes{cur_nimg//1000:06d}', result_subdir)
             if cur_tick % network_snapshot_ticks == 0 or done:
                 misc.save_pkl((G, D, Gs), os.path.join(result_subdir, 'network-snapshot-%06d.pkl' % (cur_nimg // 1000)))
